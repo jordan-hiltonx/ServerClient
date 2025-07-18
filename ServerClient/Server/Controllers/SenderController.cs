@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Server.Interfaces;
+using Server.Services;
+using WebSocketManager = Server.Services.WebSocketManager;
 
 namespace Server.Controllers
 {
@@ -7,20 +8,27 @@ namespace Server.Controllers
     [Route("api/server")]
     public class SenderController : ControllerBase
     {
-        private readonly ISenderService _senderService;
+        private readonly IWebSocketManager _webSocketManager;
         
-        public SenderController(ISenderService senderService)
+        public SenderController(IWebSocketManager webSocketManager)
         {
-            _senderService = senderService ?? throw new ArgumentNullException(nameof(senderService));
+            _webSocketManager = webSocketManager ?? throw new ArgumentNullException(nameof(webSocketManager));
         }
         
         [HttpPost("send")]
         public async Task<IActionResult> SendMessage([FromBody] string message)
         {
-            await _senderService.SendMessageAsync(message);
-            Console.WriteLine($"Message sent: {message} at {DateTime.Now}");
-            
-            return Ok();
+            try
+            {
+                await _webSocketManager.BroadcastMessageAsync(message);
+                Console.WriteLine($"Message sent: {message} at {DateTime.Now}");
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                return StatusCode(500, ex.Message);
+            }
         }
     }
 }
